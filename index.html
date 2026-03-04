@@ -3018,7 +3018,7 @@ async function callAPI(text) {
     hideTyping();
     const errMsg = 'Sinyal terputus. Coba lagi ya.';
     const errBbl = renderMsgDOM('emosy', errMsg, false);
-    msgs.push({ role: 'assistant', content: errMsg });
+    // Jangan push error ke msgs — supaya retry tidak kacau formatnya
     addRetryBtn(errBbl);
     console.error('EMOSY Error:', e);
   }
