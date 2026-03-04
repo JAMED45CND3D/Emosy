@@ -3002,8 +3002,12 @@ async function callAPI(text) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
+
+    // Tampilkan error Gemini kalau ada
+    if (data?.error) throw new Error(JSON.stringify(data.error));
+
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!reply) throw new Error('Empty response');
+    if (!reply) throw new Error('No reply: ' + JSON.stringify(data).slice(0, 100));
 
     hideTyping();
 
@@ -3016,7 +3020,7 @@ async function callAPI(text) {
 
   } catch (e) {
     hideTyping();
-    const errMsg = 'Sinyal terputus. Coba lagi ya.';
+    const errMsg = '⚠ ' + e.message;
     const errBbl = renderMsgDOM('emosy', errMsg, false);
     // Jangan push error ke msgs — supaya retry tidak kacau formatnya
     addRetryBtn(errBbl);
