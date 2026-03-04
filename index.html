@@ -3003,10 +3003,12 @@ async function callAPI(text) {
 
     const data = await res.json();
 
-    // Tampilkan error Gemini kalau ada
+    // Tampilkan error kalau ada
     if (data?.error) throw new Error(JSON.stringify(data.error));
 
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Support Groq/OpenAI format DAN Gemini format
+    const reply = data?.choices?.[0]?.message?.content ||
+                  data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!reply) throw new Error('No reply: ' + JSON.stringify(data).slice(0, 100));
 
     hideTyping();
