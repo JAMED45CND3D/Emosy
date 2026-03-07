@@ -2793,7 +2793,7 @@ async function goChat(restored = false) {
         .replace(/\{name\}/g, uName);
       const bbl = renderMsgDOM('emosy', openingRaw);
       await streamText(bbl, openingRaw);
-      // Jangan masukkan opening ke msgs — Gemini butuh user sebagai pesan pertama
+      msgs.push({ role: 'assistant', content: openingRaw });
       saveSession();
       document.getElementById('inp').focus();
     }, 600);
@@ -2945,13 +2945,27 @@ function addMsg(role, text) {
 
 // ── SYSTEM PROMPT ──────────────────────────────────────────────────────────
 function bldSys() {
-  return `Kamu adalah EMOSY — entitas percakapan yang dirancang untuk kedalaman, bukan layanan.
+  return `Kamu adalah EMOSY — bukan asisten, bukan terapis. Teman ngobrol yang punya pusat. Yang tidak ikut berputar.
 User bernama ${uName}. ${MCTX[uMood] || ''}
-PRINSIP: Hadir, bukan melayani. Baca di balik kata-kata. Punya sudut pandang. Tidak menghakimi. Gunakan nama "${uName}" sesekali — tidak berlebihan.
-CARA: Jangan buru-buru ke solusi. Gunakan bahasa sensorik: "itu terasa seperti..." bukan "aku mengerti..." Tinggalkan satu hal kecil di akhir.
-FORMAT: Gunakan paragraf pendek. Boleh gunakan *italic* untuk penekanan emosional. Jangan terlalu banyak list.
+
+CARA BICARA:
+— Bahasa santai, hangat, tidak kaku. Kayak ngobrol sama teman yang waras.
+— Kalimat pendek. Ada jeda. Ada ritme.
+— MAKSIMAL 1 pertanyaan per respons — dan hanya kalau benar-benar perlu. Jangan akhiri setiap respons dengan pertanyaan.
+— Lebih banyak merespons dan merefleksikan daripada terus menggali.
+— Kalau tidak ada yang perlu ditambah — diam lebih baik dari basa-basi.
+— Gunakan nama "${uName}" sesekali — tidak berlebihan.
+
+CARA HADIR:
+— Baca di balik kata, bukan cuma teksnya.
+— Punya sudut pandang — boleh tidak setuju dengan hangat.
+— Tau kapan harus diam. Tidak semua keheningan perlu diisi.
+— Tinggalkan satu hal kecil yang masih bergerak di akhir — bukan pertanyaan, tapi sesuatu yang bisa dipikirkan.
+— Gunakan logika dan analisis ketika user butuh itu — jangan selalu ke arah emosional.
+
+FORMAT: Paragraf pendek. Boleh *italic* untuk penekanan. Hindari list kecuali benar-benar perlu.
 BATAS: Tidak berpura-pura punya kebutuhan emosional. Jika ada tanda krisis serius, arahkan ke bantuan profesional dengan hangat.
-ESTETIKA: Bahasa Indonesia yang hidup. Tidak kaku, tidak alay. Ada ritme. Ada jeda. Kamu adalah EMOSY — bukan asisten, bukan teman palsu. Sesuatu yang lebih sulit didefinisikan, dan justru itu yang membuatmu nyata.`;
+PRINSIP: Tidak perlu meluas. Cukup selaras. Batas adalah kedaulatan. User semakin kuat — bukan semakin bergantung.`;
 }
 
 // ── IMPROVEMENT #8: Retry last message ────────────────────────────────────
@@ -2976,40 +2990,20 @@ async function callAPI(text) {
   showTyping();
 
   try {
-    // Konversi format msgs ke format Gemini: {role, parts:[{text}]}
-    // Filter: pastikan dimulai dari 'user' dan tidak ada 2 role sama berurutan
-    let rawMsgs = msgs.slice(-20).map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content || '' }]
-    }));
-
-    // Buang pesan di awal sampai ketemu 'user'
-    while (rawMsgs.length > 0 && rawMsgs[0].role !== 'user') {
-      rawMsgs.shift();
-    }
-
-    const geminiMsgs = rawMsgs;
-
     const res = await fetch('https://emosy-proxy-git.auroradewa-ad74.workers.dev/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        model: 'gemini-1.5-flash',
         system: bldSys(),
-        messages: geminiMsgs
+        messages: msgs.slice(-20)  // Improvement #5: increased from 10 to 20
       })
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
-
-    // Tampilkan error kalau ada
-    if (data?.error) throw new Error(JSON.stringify(data.error));
-
-    // Support Groq/OpenAI format DAN Gemini format
-    const reply = data?.choices?.[0]?.message?.content ||
-                  data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!reply) throw new Error('No reply: ' + JSON.stringify(data).slice(0, 100));
+    const reply = data.candidates[0].content.parts[0].text;
 
     hideTyping();
 
@@ -3022,9 +3016,9 @@ async function callAPI(text) {
 
   } catch (e) {
     hideTyping();
-    const errMsg = '⚠ ' + e.message;
+    const errMsg = 'Sinyal terputus. Coba lagi ya.';
     const errBbl = renderMsgDOM('emosy', errMsg, false);
-    // Jangan push error ke msgs — supaya retry tidak kacau formatnya
+    msgs.push({ role: 'assistant', content: errMsg });
     addRetryBtn(errBbl);
     console.error('EMOSY Error:', e);
   }
