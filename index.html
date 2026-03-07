@@ -2793,7 +2793,7 @@ async function goChat(restored = false) {
         .replace(/\{name\}/g, uName);
       const bbl = renderMsgDOM('emosy', openingRaw);
       await streamText(bbl, openingRaw);
-      msgs.push({ role: 'assistant', content: openingRaw });
+      // Jangan masukkan opening ke msgs — Gemini butuh user sebagai pesan pertama
       saveSession();
       document.getElementById('inp').focus();
     }, 600);
@@ -2990,20 +2990,46 @@ async function callAPI(text) {
   showTyping();
 
   try {
-    const res = await fetch('https://emosy-proxy-git.auroradewa-ad74.workers.dev/', {
+    // Groq API — direct, no proxy needed
+    let groqKey = localStorage.getItem('emosy_groq_key') || '';
+    if (!groqKey) {
+      const k = prompt('Masukkan Groq API Key kamu (gratis di console.groq.com):');
+      if (k) { localStorage.setItem('emosy_groq_key', k.trim()); groqKey = k.trim(); }
+      else { hideTyping(); document.getElementById('ibtn').disabled = false; busy = false; return; }
+    }
+
+    const groqMsgs = [
+      { role: 'system', content: bldSys() },
+      ...msgs.slice(-20).map(m => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.content || ''
+      }))
+    ];
+
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqKey}`
+      },
       body: JSON.stringify({
-        model: 'gemini-1.5-flash',
-        system: bldSys(),
-        messages: msgs.slice(-20)  // Improvement #5: increased from 10 to 20
+        model: 'llama-3.3-70b-versatile',
+        messages: groqMsgs,
+        max_tokens: 800,
+        temperature: 0.8
       })
     });
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      if (res.status === 401) { localStorage.removeItem('emosy_groq_key'); }
+      throw new Error(`HTTP ${res.status}`);
+    }
 
     const data = await res.json();
-    const reply = data.candidates[0].content.parts[0].text;
+    if (data?.error) throw new Error(JSON.stringify(data.error));
+
+    const reply = data?.choices?.[0]?.message?.content;
+    if (!reply) throw new Error('No reply: ' + JSON.stringify(data).slice(0, 100));
 
     hideTyping();
 
@@ -3016,9 +3042,9 @@ async function callAPI(text) {
 
   } catch (e) {
     hideTyping();
-    const errMsg = 'Sinyal terputus. Coba lagi ya.';
+    const errMsg = '⚠ ' + e.message;
     const errBbl = renderMsgDOM('emosy', errMsg, false);
-    msgs.push({ role: 'assistant', content: errMsg });
+    // Jangan push error ke msgs — supaya retry tidak kacau formatnya
     addRetryBtn(errBbl);
     console.error('EMOSY Error:', e);
   }
