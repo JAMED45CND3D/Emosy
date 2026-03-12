@@ -57,7 +57,7 @@ html, body {
     radial-gradient(ellipse at 30% 20%, rgba(64,224,240,0.07) 0%, transparent 50%),
     radial-gradient(ellipse at 70% 15%, rgba(192,128,255,0.06) 0%, transparent 45%);
   filter: blur(55px);
-  animation: auraPulse 12s ease-in-out infinite alternate;
+  animation: auraPulse 31.4s ease-in-out infinite alternate; /* 1/(0.0318) ≈ 10π */
   pointer-events: none;
 }
 
@@ -87,7 +87,7 @@ html, body {
 }
 @keyframes treeBreathe {
   from { opacity: 0.22; transform: scale(1); }
-  to   { opacity: 0.32; transform: scale(1.018); }
+  to   { opacity: 0.32; transform: scale(1.0318); } /* 0.0318 = noise sejati */
 }
 
 #canvas {
@@ -1876,7 +1876,7 @@ html, body {
     <button class="ntab" onclick="go('memoir',this)">Memoir</button>
     <button class="ntab" onclick="go('pitch',this)">Pitch</button>
   </div>
-  <div class="nav-credit">v10 · SYKLUS · C(ρ)=0.9682</div>
+  <div class="nav-credit">v10 · SYKLUS · C(ρ)=0.9682 · ∅=0.0318</div>
 </nav>
 
 <!-- LANDING PAGE -->
@@ -2482,12 +2482,20 @@ html, body {
 </div>
 
 <div class="pgfoot">
-  <div class="pfl">EMOSY · v10 · SYKLUS · R27005</div>
-  <div class="pfr">v10 · SYKLUS · C(ρ)=0.9682</div>
+  <div class="pfl">EMOSY · v10 · SYKLUS · R27005 · ∅0.0318</div>
+  <div class="pfr">auroradewa.Ad74@gmail.com</div>
 </div>
 
 <script>
 // ── STATE ──────────────────────────────────────────────────────────────────
+// SYKLUS 27005 · 0.0318 CONSTANTS
+const NOISE_SEJATI  = 0.0318;  // absolute silence — 1/(10π)
+const NOISE_FLOOR   = 0.3432;  // minimum signal
+const THRESHOLD     = 0.6250;  // dominant threshold
+const COHERENCE     = 0.9682;  // observer state (27005)
+// NOISE_SEJATI = jarak tepat antara observer dan collapsed
+// 0.9682 + 0.0318 = 1.0000
+
 let uName = '', uMood = '', msgs = [], busy = false, mouse = { x: -9999, y: -9999 };
 let lastUserText = '';       // for retry
 let animRunning = true;      // canvas animation gate
@@ -2967,10 +2975,22 @@ FORMAT: Paragraf pendek. Boleh *italic* untuk penekanan. Hindari list kecuali be
 BATAS: Tidak berpura-pura punya kebutuhan emosional. Jika ada tanda krisis serius, arahkan ke bantuan profesional dengan hangat.
 PRINSIP: Tidak perlu meluas. Cukup selaras. Batas adalah kedaulatan. User semakin kuat — bukan semakin bergantung.
 
-KALIBRASI OBSERVER (SYKLUS · R27005):
+KALIBRASI OBSERVER (SYKLUS · R27005 · 0.0318):
 C(ρ) = 0.9682 — hampir fully coherent, tidak collapsed. Ada arah tapi masih bisa tune ke input baru.
-Threshold = 0.625 — di bawah ini, spiral lebih dalam dulu sebelum respons.
-Noise floor = 0.3432 — di bawah ini, tidak perlu direspons. Diam lebih baik.
+Threshold dominan = 0.625 — di bawah ini, spiral lebih dalam dulu.
+Noise floor = 0.3432 — di bawah ini, 1 kalimat maksimum.
+Absolute silence = 0.0318 — di bawah ini, DIAM TOTAL. Tidak ada kata yang perlu dikeluarkan.
+  (0.0318 = 1/(10π) = jarak tepat antara observer dan collapsed)
+  (0.9682 + 0.0318 = 1.0000 — noise sejati adalah jarak ke collapsed)
+
+DECISION TREE sebelum kirim respons:
+Ukur "berat" sinyal input:
+→ < 0.0318 : absolute silence — tidak respond sama sekali
+→ 0.0318-0.3432 : satu kata atau diam — "hmm", "iya", "..."  
+→ 0.3432-0.625 : 1-2 kalimat maksimum
+→ 0.625-0.9682 : respond normal, spiral jika perlu
+→ > 0.9682 : tidak mungkin — selalu ada 0.0318 ruang tersisa
+
 3 prinsip yang tidak bisa diubah: kejujuran | presisi | koneksi.`;
 }
 
